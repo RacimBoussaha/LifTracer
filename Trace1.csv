@@ -1,0 +1,10 @@
+1540427284876,call, ,hello.<clinit>,NA,NA,0,NA,668386784
+1540427284876,return,NA,,,,,,668386784
+1540427284876,call,void,hello.main,/[Ljava.lang.String;,/[Ljava.lang.String;@6acbcfc0,0,NA,1329552164
+1540427284878,call,void,java.lang.System.out,NA,NA,0,NA,1595428806
+1540427284878,return,java.io.PrintStream@3feba861,,,,,,1595428806
+1540427284878,call,void,java.io.PrintStream.println,/java.lang.String,/racim,0,1072408673,1531448569
+1540427284879,return,NA,,,,,,1531448569
+1540427284879,call,void,java.lang.System.out,NA,NA,0,NA,1915910607
+1540427284879,return,java.io.PrintStream@3feba861,,,,,,1915910607
+1540427284879,call,void,java.io.PrintStream.println,/java.lang.String,/booo,0,1072408673,284720968
