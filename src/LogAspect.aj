@@ -6,7 +6,7 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import org.aspectj.lang.reflect.MethodSignature;
 
-public aspect LogAspect {
+public aspect LogAspect1 {
 
 	private int _callDepth = -1;
 	private String returnType = " ";
@@ -22,188 +22,144 @@ public aspect LogAspect {
 	Class[] paramTypes;
 	int i=0;
 
-	public LogAspect(){
-		file2 = new File("Trace1.csv");
+	public LogAspect1(){
+		
 		try {
+			file2 = new File("Trace1.csv");
 			fileWriter2 = new FileWriter(file2);
 			fileWriter2.write("");
+			fileWriter2.flush();
+			fileWriter2.write("Event timestamp,Event ID,Event type,Calling object,Calling object identity hashcode,Method return type,Method name,Method call depth,Method parameters number,Parameters types,Parameters values\n");
+			fileWriter2.flush();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
 
-	pointcut traceMethods(): 
-
-		!within(LogAspect) 
-		&& !initialization(* .new(..)) ;
+	pointcut traceMethods(): !within(LogAspect1)&& !initialization(* .new(..));//&& !preinitialization(* .new(..))  ;
 
 
 	before(): traceMethods() {
+
 		_callDepth++;
-		try {
-			fileWriter2.write("");
-		} catch (IOException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
+		
 		int id=thisJoinPoint.hashCode();
 		Object[] paramValues = thisJoinPoint.getArgs();
-
 		paramTypes = new Class[paramValues.length]; 
 		int i=0;
 		if (paramValues.length>0){
 			for (Object temp : paramValues) {
-
 				try {
 					paramTypes[i]= temp.getClass();
 				} catch (Exception e) {
-					// TODO Auto-generated catch block
-
 				}
 				i++;
-
 			}}
 		Signature sig = thisJoinPointStaticPart.getSignature();
 		this.target= thisJoinPoint.getTarget();
-
-
 		try {
 			print(sig, paramTypes, paramValues,id);
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-
-
 	}
 
-
-	//	after()returning(Object r): traceMethods() {
 	Object around(): traceMethods() {
-		_callDepth--;
-		//Object returnValue = r;
+		
 		long timestamp = System.currentTimeMillis();
 		Object returnValue = proceed();
-
-
 		if (returnValue!=null ){
-
-
-			//alist.add("output // "+returnValue.toString()+" // "+thisJoinPoint.hashCode()+"\n");
-			//source.setEvents("output // "+returnValue.toString()+" // "+thisJoinPoint.hashCode()+"\n");
 			try {
-				fileWriter2.write(timestamp+",return,"+returnValue.toString()+",,,,,,"+thisJoinPoint.hashCode()+"\n");
+				fileWriter2.write(timestamp+","+thisJoinPoint.hashCode()+",return,"+clean(returnValue.toString())+","+System.identityHashCode(target)+",NA,NA,NA,NA,NA,NA,NA\n");
+				fileWriter2.flush();
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-			//String x =  (p.pull()).toString();
-			//System.out.println("The event is: " + x);
-
 		}
 		else 
 		{
-
-
-			//alist.add("output // "+"NAN // "+thisJoinPoint.hashCode()+"\n");
 			try {
-				fileWriter2.write(timestamp+",return,"+"NA,,,,,,"+thisJoinPoint.hashCode()+"\n");
+				fileWriter2.write(timestamp+","+thisJoinPoint.hashCode()+",return,NA,"+System.identityHashCode(target)+",NA,NA,NA,NA,NA,NA\n");
+				fileWriter2.flush();
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-			//String x =  (p.pull()).toString();
-			//System.out.println("The event is: " + x);
-
-
 		}
 		return returnValue;
-
 	}
-
-	private void print(Signature sig, Class[] paramsType, Object[] paramValues, int id) {
-
+	 after(): traceMethods() {
+		_callDepth--;
+	}
+	private void print(Signature sig, Class[] paramsType, Object[] paramValues, int id)  {
+		//System.out.println(sig+"/"+paramsType.length+"/"+paramValues.length+"/"+id);
 		long timestamp = System.currentTimeMillis();
-
 		if (sig instanceof MethodSignature) {
 			Method method = ((MethodSignature)sig).getMethod();
 			returnType = method.getReturnType().toString();
-
 		}
 		traceBefore = "";
 		String methode = sig.getName();
-		traceBefore = traceBefore +returnType+"," + sig.getDeclaringType().getName() + "." + methode+"," ;
-		if (paramsType.length == 0) {
-			traceBefore = traceBefore + "NA";
-		} else {
-
-			for (int i = 0; i < paramsType.length; i++) {
-				
-				try {
-					traceBefore = traceBefore + "/" + paramsType[i].getName() ;
-				} catch (Exception e) {
-					// TODO Auto-generated catch block
-					traceBefore = traceBefore + "NA";
-				}
-
-			}
-
+		String targetObj="";
+		String targetIhc="";
+		int paramNum=0;
+		if (target!=null)
+		{
+			targetObj=clean(target.toString());
+			targetIhc=clean(Integer.toString(System.identityHashCode(target)));
+			//traceBefore = traceBefore +_callDepth;
+		//System.out.println(traceBefore+" 1");
 		}
-		traceBefore = traceBefore + ",";
-
-		String paramLen ="";
+		else{targetObj="NA";
+		targetIhc="NA";
+			//traceBefore = traceBefore  + ",NA,"+id+","+_callDepth; 
+		//System.out.println(traceBefore+" 2");
+		}
+		if (paramsType.length == 0) {
+			
+			traceBefore = traceBefore +",0,NA,";
+			//System.out.println(traceBefore+" 3");
+		} else {
+			traceBefore = traceBefore +","+paramsType.length+",";
+			for (int i = 0; i < paramsType.length; i++) {
+				traceBefore = traceBefore+clean(paramsType[i].getName().toString());
+				if (i==paramsType.length-1)
+					traceBefore = traceBefore+"," ;
+				else 
+					traceBefore = traceBefore+"//" ;
+			 }
+		}
+		
 		if (paramValues.length == 0) {
-
 			traceBefore = traceBefore + "NA";
 		} else {
 			for (int i = 0; i < paramValues.length; i++) {
-
-				/*if(methode.equals("write") && i==0){
-
-					paramLen = ","+paramValues[0];
-
-				}
-
-				if(methode.equals("readline") && i==0){
-
-					paramLen = ""+paramValues[0];
-
-				}*/
-				traceBefore = traceBefore + "/"+ paramValues[i]  ;
-
-
+				traceBefore = traceBefore+ clean(paramValues[i].toString());
+				if (i<paramsType.length-1)
+					traceBefore = traceBefore+"//" ;
 			}
 		}
 		
-
-		traceBefore = traceBefore + "," +_callDepth;
-		if (target!=null)
-		{traceBefore = traceBefore + ","+ System.identityHashCode(target);}
-		else{traceBefore = traceBefore  + ",NA"; 
-		}
-
+			
 		try {
-
-
-
-			fileWriter2.write(timestamp+",call,"+traceBefore+","+id+"\n");
-
+			fileWriter2.write(timestamp+","+id+",call,"+
+			targetObj+","+targetIhc+","+returnType+","+ sig.getDeclaringType().getName() + "." + methode+","+_callDepth +traceBefore+"\n");
+							
 			fileWriter2.flush();
 			
 		} catch (IOException e) {
-
-			e.printStackTrace();
-		}
-
-	
-
+			}
+			
 	}
-
-
-
-
-
-
-
-
+private  String clean(String st){
+	String rt=st;
+		if(rt.contains("\n"))
+		{
+			rt=rt.replace("\n","/");
+		}
+		if(rt.contains(","))
+		{
+			rt=rt.replace(",", "±");
+		}	
+	return st;	
+	}
 }
