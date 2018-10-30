@@ -6,7 +6,7 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import org.aspectj.lang.reflect.MethodSignature;
 
-public aspect LogAspect1 {
+public aspect LogAspect {
 
 	private int _callDepth = -1;
 	private String returnType = " ";
@@ -22,13 +22,11 @@ public aspect LogAspect1 {
 	Class[] paramTypes;
 	int i=0;
 
-	public LogAspect1(){
-		
+	public LogAspect(){
+		file2 = new File("Trace1.csv");
 		try {
-			file2 = new File("Trace1.csv");
 			fileWriter2 = new FileWriter(file2);
 			fileWriter2.write("");
-			fileWriter2.flush();
 			fileWriter2.write("Event timestamp,Event ID,Event type,Calling object,Calling object identity hashcode,Method return type,Method name,Method call depth,Method parameters number,Parameters types,Parameters values\n");
 			fileWriter2.flush();
 		} catch (IOException e) {
@@ -36,13 +34,25 @@ public aspect LogAspect1 {
 		}
 	}
 
-	pointcut traceMethods(): !within(LogAspect1)&& !initialization(* .new(..));//&& !preinitialization(* .new(..))  ;
-
+//	pointcut traceMethods(): !within(LogAspect)	&& !initialization(* .new(..)) ;
+	pointcut traceMethods(): 
+		//execution(* MyLine.*(..)) &&
+		//!preinitialization(* .new(..)) && 
+		//!staticinitialization(*) &&
+		//!get(* .) &&
+		//!set(* .) &&
+		!within(testAspectBefore) && !within(MySecurityManager) && !within(JavaFX_OpenFile) && !within(Trace) &&
+		!within(ca.uqac..*)&& !call (* ca.uqac..*(..)) && !within(SecurityProcessors.*)&& !call (* SecurityProcessors..*(..)) 
+		&& !initialization(* .new(..)) ;
 
 	before(): traceMethods() {
 
 		_callDepth++;
-		
+		try {
+			fileWriter2.write("");
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
 		int id=thisJoinPoint.hashCode();
 		Object[] paramValues = thisJoinPoint.getArgs();
 		paramTypes = new Class[paramValues.length]; 
@@ -52,6 +62,7 @@ public aspect LogAspect1 {
 				try {
 					paramTypes[i]= temp.getClass();
 				} catch (Exception e) {
+					e.printStackTrace();
 				}
 				i++;
 			}}
@@ -70,8 +81,7 @@ public aspect LogAspect1 {
 		Object returnValue = proceed();
 		if (returnValue!=null ){
 			try {
-				fileWriter2.write(timestamp+","+thisJoinPoint.hashCode()+",return,"+clean(returnValue.toString())+","+System.identityHashCode(target)+",NA,NA,NA,NA,NA,NA,NA\n");
-				fileWriter2.flush();
+				fileWriter2.write(timestamp+","+thisJoinPoint.hashCode()+",return,"+returnValue.toString().replace("\n","/").replace(",", "±")+","+System.identityHashCode(target)+",NA,NA,NA,NA,NA,NA,NA\n");
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -80,7 +90,6 @@ public aspect LogAspect1 {
 		{
 			try {
 				fileWriter2.write(timestamp+","+thisJoinPoint.hashCode()+",return,NA,"+System.identityHashCode(target)+",NA,NA,NA,NA,NA,NA\n");
-				fileWriter2.flush();
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -90,8 +99,8 @@ public aspect LogAspect1 {
 	 after(): traceMethods() {
 		_callDepth--;
 	}
-	private void print(Signature sig, Class[] paramsType, Object[] paramValues, int id)  {
-		//System.out.println(sig+"/"+paramsType.length+"/"+paramValues.length+"/"+id);
+	private void print(Signature sig, Class[] paramsType, Object[] paramValues, int id) {
+
 		long timestamp = System.currentTimeMillis();
 		if (sig instanceof MethodSignature) {
 			Method method = ((MethodSignature)sig).getMethod();
@@ -99,67 +108,47 @@ public aspect LogAspect1 {
 		}
 		traceBefore = "";
 		String methode = sig.getName();
-		String targetObj="";
-		String targetIhc="";
-		int paramNum=0;
+
 		if (target!=null)
-		{
-			targetObj=clean(target.toString());
-			targetIhc=clean(Integer.toString(System.identityHashCode(target)));
-			//traceBefore = traceBefore +_callDepth;
-		//System.out.println(traceBefore+" 1");
-		}
-		else{targetObj="NA";
-		targetIhc="NA";
-			//traceBefore = traceBefore  + ",NA,"+id+","+_callDepth; 
-		//System.out.println(traceBefore+" 2");
+		{traceBefore = traceBefore +_callDepth;}
+		else{traceBefore = traceBefore  + ",NA,"+id+","+_callDepth; 
 		}
 		if (paramsType.length == 0) {
-			
 			traceBefore = traceBefore +",0,NA,";
-			//System.out.println(traceBefore+" 3");
 		} else {
 			traceBefore = traceBefore +","+paramsType.length+",";
 			for (int i = 0; i < paramsType.length; i++) {
-				traceBefore = traceBefore+clean(paramsType[i].getName().toString());
-				if (i==paramsType.length-1)
-					traceBefore = traceBefore+"," ;
-				else 
+				try {
+					traceBefore = traceBefore+paramsType[i].getName().toString().replace("\n","/").replace(",", "±");
+				if (i<paramsType.length-1)
 					traceBefore = traceBefore+"//" ;
-			 }
+				else 
+					traceBefore = traceBefore+"," ;
+				} catch (Exception e) {	
+					System.out.println("128");
+					traceBefore = traceBefore + ",0,NA,";
+				}
+			}
 		}
-		
-		if (paramValues.length == 0) {
+		try {
+		if (paramValues.length == 0 ) {
 			traceBefore = traceBefore + "NA";
 		} else {
 			for (int i = 0; i < paramValues.length; i++) {
-				traceBefore = traceBefore+ clean(paramValues[i].toString());
+				//traceBefore = traceBefore+ paramValues[i].toString().replace("\n","/").replace(",", "±");
+				traceBefore = traceBefore+ paramValues[i].toString();
 				if (i<paramsType.length-1)
 					traceBefore = traceBefore+"//" ;
 			}
 		}
-		
+	//	fileWriter2.write(timestamp+","+id+",call,"+
+		//target.toString().replace("\n","/").replace(",", "±")+","+System.identityHashCode(target)+","+returnType+","+ sig.getDeclaringType().getName() + "." + methode+"," +traceBefore+"\n");
 			
-		try {
-			fileWriter2.write(timestamp+","+id+",call,"+
-			targetObj+","+targetIhc+","+returnType+","+ sig.getDeclaringType().getName() + "." + methode+","+_callDepth +traceBefore+"\n");
-							
-			fileWriter2.flush();
-			
-		} catch (IOException e) {
-			}
-			
-	}
-private  String clean(String st){
-	String rt=st;
-		if(rt.contains("\n"))
-		{
-			rt=rt.replace("\n","/");
+		fileWriter2.write(timestamp+","+id+",call,"+
+				target.toString()+","+System.identityHashCode(target)+","+returnType+","+ sig.getDeclaringType().getName() + "." + methode+"," +traceBefore+"\n");
+				
+		fileWriter2.flush();			
+		} catch (Exception e) {
 		}
-		if(rt.contains(","))
-		{
-			rt=rt.replace(",", "±");
-		}	
-	return st;	
 	}
 }
